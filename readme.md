@@ -2,24 +2,18 @@
 
 ## How to use leap without GUI(just for training)
 
-```python
+```bash
 usage: training.py [-h] --video_path VIDEO_PATH --label_path LABEL_PATH
                    [--base_output_path BASE_OUTPUT_PATH]
 
 optional arguments:
   -h, --help            show this help message and exit
-
   --video_path VIDEO_PATH
-
                         The path of the training video with h5 format
-
   --label_path LABEL_PATH
-
                         The path of the label file with format: [frame_idx, x,
                         y, w, h]
-
   --base_output_path BASE_OUTPUT_PATH
-
                         The base output path to store the model and
                         visualizaiton results
 ```
