@@ -3,6 +3,7 @@ import numpy as np
 import re
 from time import time
 import h5py
+import math
 
 def versions(list_devices=False):
     """ Prints system info and version strings for finicky libraries. """
@@ -78,3 +79,57 @@ def preprocess(X, permute=(0,3,2,1)):
         X = X.astype("float32") / 255
     
     return X
+
+def load_video(data_path, X_dset="box", permute=(0,3,2,1)):
+    """ Loads and normalizes videos. """
+    
+    # Load
+    t0 = time()
+    with h5py.File(data_path,"r") as f:
+        X = f[X_dset][:]
+    print("Loaded %d samples [%.1fs]" % (len(X), time() - t0))
+    print("Image samples shape: ", X.shape)
+    
+    # Adjust dimensions
+    t0 = time()
+    X = preprocess(X, permute)
+    print("Permuted and normalized data. [%.1fs]" % (time() - t0))
+    
+    return X
+
+def load_label(label_path, number_of_samples, rows, cols, channels=1, permute=None):
+    """ Loads label and generate confidence maps"""
+
+    # Load
+    t0 = time()
+    point = np.zeros((number_of_samples, 2, channels))
+    with open(label_path, 'r') as f:
+        for line in f.readlines():
+            # frame_idx, x, y, w, h, conf
+            line = line.split(" ")[:-1]
+            frame_idx = int(line[0])
+            x = int(line[1]) + int(line[3]) // 2
+            y = int(line[2]) + int(line[4]) // 2
+            point[frame_idx - 1:frame_idx, :, 0] = np.array((x, y))
+
+    confmap = px2confmap(point, number_of_samples, rows, cols)
+
+    if permute is not None:
+        confmap = preprocess(confmap, permute)
+
+    return confmap
+
+def px2confmap(point, number_of_samples, rows, cols, channels=1, sigma=5, normalize=True):
+    assert channels == 1
+    confmap = np.zeros((number_of_samples, rows, cols, channels))
+    XX = np.arange(rows * cols).reshape(rows, cols) // rows
+    YY = np.arange(rows * cols).reshape(rows, cols) % cols
+    for i in range(number_of_samples):
+        x = point[i, 0, 0]
+        y = point[i, 1, 0]
+        confmap[i:i+1, :, :, 0] = np.exp(-((XX - x) ** 2 + (YY - y) ** 2) / 2 * sigma)
+
+    if not normalize:
+        confmap /= (sigma * math.sqrt(2 * math.pi))
+    
+    return confmap
