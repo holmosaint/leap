@@ -35,19 +35,27 @@ def train_val_split(X, Y, val_size=0.15, shuffle=True):
 
 def train_val_test_split(X, Y, train_size=0.5, val_size=0.15, shuffle=True):
     """ Splits datasets into training and validation sets """
+    """ The test sequence should be sequential """
 
     if val_size < 1:
         val_size = int(np.round(len(X) * val_size * train_size))
     if train_size < 1:
         train_size = int(np.round(len(X) * train_size))
     
-    idx = np.arange(len(X))
+    """idx = np.arange(len(X))
     if shuffle:
-        np.random.shuffle(idx)
-    
-    val_idx = idx[:val_size]
-    train_idx = idx[val_size:train_size]
-    test_idx = idx[train_size:]
+        np.random.shuffle(idx)"""
+
+    test_size = len(X) - train_size
+    test_start = np.random.randint(0, len(X) - test_size - 1)
+    test_idx = np.arange(test_start, test_start + test_size)
+
+    train_set = list(range(0, test_start)).extend(list(range(test_start + test_size, len(X))))
+    train_set = np.array(train_set)
+
+    val_idx = train_set[:val_size]
+    train_idx = train_set[val_size:train_size]
+    # test_idx = idx[train_size:]
 
     return X[train_idx], Y[train_idx], X[val_idx], Y[val_idx], X[test_idx], Y[test_idx], train_idx, val_idx, test_idx
 
