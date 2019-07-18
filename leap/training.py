@@ -579,7 +579,7 @@ def test(data_path, label_path, *,
         print("Could not find model:", net_name)
         return
 
-    model.load_weights("/home/retina/skw/work/leap/leap/front_foot_left_video1/video1-leap_cnn_epochs=20/best_model.h5")
+    model.load_weights("/home/retina/skw/work/leap/leap/back_foot_left_video1/video1-leap_cnn_epochs=20/best_model.h5")
     # Initialize run directories
     # run_path = create_run_folders(run_name, base_path=base_output_path, clean=clean)
 
@@ -667,6 +667,6 @@ if __name__ == "__main__":
     parser.add_argument("--base_output_path", type=str, default="models", help="The base output path to store the model and visualizaiton results")
     args = parser.parse_args()
 
-    train_test(args.video_path, args.label_path, base_output_path=args.base_output_path)
-    # test(args.video_path, args.label_path, base_output_path=args.base_output_path)
+    # train_test(args.video_path, args.label_path, base_output_path=args.base_output_path)
+    test(args.video_path, args.label_path, base_output_path=args.base_output_path)
     # cal_acc(args.label_path)
