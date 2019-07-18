@@ -124,14 +124,13 @@ def load_label(label_path, number_of_samples, rows, cols, channels=1, permute=No
 
 def px2confmap(point, number_of_samples, rows, cols, channels=1, sigma=5, normalize=True):
     assert channels == 1
-    confmap = np.zeros((number_of_samples, rows, cols, channels))
     XX = np.zeros((number_of_samples, rows, cols, channels))
     YY = np.zeros((number_of_samples, rows, cols, channels))
     XX -= np.arange(rows * cols).reshape(rows, cols, 1) // cols
     YY -= np.arange(rows * cols).reshape(rows, cols, 1) % cols
     x = point[:, 0, 0].reshape(number_of_samples, 1, 1, 1)
     y = point[:, 1, 0].reshape(number_of_samples, 1, 1, 1)
-    confmap[:, :, :, 0] = np.exp(-((XX - x) ** 2 + (YY - y) ** 2) / 2 / (sigma ** 2))
+    confmap = np.exp(-((XX - x) ** 2 + (YY - y) ** 2) / 2 / (sigma ** 2))
     """for i in range(number_of_samples):
         x = point[i, 0, 0]
         y = point[i, 1, 0]
