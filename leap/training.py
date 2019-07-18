@@ -6,6 +6,7 @@ from scipy.io import loadmat, savemat
 import re
 import shutil
 import clize
+import pandas as pd
 
 import keras
 from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, LambdaCallback
@@ -33,25 +34,28 @@ def train_val_split(X, Y, val_size=0.15, shuffle=True):
 
     return X[idx], Y[idx], X[val_idx], Y[val_idx], idx, val_idx
 
-def train_val_test_split(X, Y, train_size=0.5, val_size=0.15, shuffle=True):
+def train_val_test_split(X, Y, train_size=0.5, val_size=0.15, test_size=None, shuffle=True):
     """ Splits datasets into training and validation sets """
     """ The test sequence should be sequential """
 
-    if val_size < 1:
-        val_size = int(np.round(len(X) * val_size * train_size))
     if train_size < 1:
         train_size = int(np.round(len(X) * train_size))
+    if val_size < 1:
+        val_size = int(train_size * val_size)
+    if test_size is not None:
+        if test_size < 1:
+            test_size = int(np.round(len(X) * test_size))
+    else:
+        test_size = len(X) - train_size
     
-    """idx = np.arange(len(X))
-    if shuffle:
-        np.random.shuffle(idx)"""
-
-    test_size = len(X) - train_size
     test_start = np.random.randint(0, len(X) - test_size - 1)
     test_idx = np.arange(test_start, test_start + test_size)
 
-    train_set = list(range(0, test_start)).extend(list(range(test_start + test_size, len(X))))
+    train_set = list(range(0, test_start))
+    train_set.extend(list(range(test_start + test_size, len(X))))
     train_set = np.array(train_set)
+    if shuffle:
+        np.random.shuffle(train_set)
 
     val_idx = train_set[:val_size]
     train_idx = train_set[val_size:train_size]
@@ -138,7 +142,7 @@ def train(data_path, *,
     filters=64,
     rotate_angle=15,
     epochs=50,
-    batch_size=32,
+    batch_size=8,
     batches_per_epoch=50,
     val_batches_per_epoch=10,
     viz_idx=0,
@@ -265,7 +269,7 @@ def train(data_path, *,
             epochs=epochs,
             verbose=1,
     #         use_multiprocessing=True,
-    #         workers=8,
+            workers=1,
             steps_per_epoch=batches_per_epoch,
             max_queue_size=512,
             shuffle=False,
@@ -297,15 +301,15 @@ def train_test(data_path, label_path, *,
     clean=False,
     box_dset="box",
     confmap_dset="confmaps",
-    val_size=0.15,
+    val_size=0.1,
     preshuffle=True,
     filters=64,
     rotate_angle=15,
-    epochs=50,
-    batch_size=32,
-    batches_per_epoch=50,
+    epochs=20,
+    batch_size=8,
+    batches_per_epoch=90,
     val_batches_per_epoch=10,
-    viz_idx=0,
+    viz_idx=[0, 100, 200, 300, 400],
     reduce_lr_factor=0.1,
     reduce_lr_patience=3,
     reduce_lr_min_delta=1e-5,
@@ -313,7 +317,7 @@ def train_test(data_path, label_path, *,
     reduce_lr_min_lr=1e-10,
     save_every_epoch=False,
     amsgrad=False,
-    upsampling_layers=False,
+    upsampling_layers=True,
     ):
     """
     Trains the network and saves the intermediate results to an output directory.
@@ -350,8 +354,9 @@ def train_test(data_path, label_path, *,
     # box, confmap = load_dataset(data_path, X_dset=box_dset, Y_dset=confmap_dset)
     box = load_video(data_path, X_dset=box_dset)
     confmap = load_label(label_path, *box.shape)
-    viz_sample = (box[viz_idx], confmap[viz_idx])
-    box, confmap, val_box, val_confmap, test_box, test_confmap, train_idx, val_idx, test_idx = train_val_test_split(box, confmap, val_size=val_size, shuffle=preshuffle)
+    # viz_sample = (box[viz_idx], confmap[viz_idx])
+    viz_sample = [(box[x], confmap[x]) for x in viz_idx]
+    box, confmap, val_box, val_confmap, test_box, test_confmap, train_idx, val_idx, test_idx = train_val_test_split(box, confmap, train_size=800, val_size=val_size, test_size=1000, shuffle=preshuffle)
     print("box.shape:", box.shape)
     print("val_box.shape:", val_box.shape)
     print("test_box.shape: ", test_box.shape)
@@ -382,6 +387,7 @@ def train_test(data_path, label_path, *,
         print("Could not find model:", net_name)
         return
 
+    # model.load_weights("/home/retina/skw/work/leap/leap/models/video1-leap_cnn_epochs=10_04/final_model.h5")
     # Initialize run directories
     run_path = create_run_folders(run_name, base_path=base_output_path, clean=clean)
     savemat(os.path.join(run_path, "training_info.mat"),
@@ -420,8 +426,8 @@ def train_test(data_path, label_path, *,
         checkpointer = ModelCheckpoint(filepath=os.path.join(run_path, "weights/weights.{epoch:03d}-{val_loss:.9f}.h5"), verbose=1, save_best_only=False)
     else:
         checkpointer = ModelCheckpoint(filepath=os.path.join(run_path, "best_model.h5"), verbose=1, save_best_only=True)
-    viz_grid_callback = LambdaCallback(on_epoch_end=lambda epoch, logs: show_confmap_grid(model, *viz_sample, plot=True, save_path=os.path.join(run_path, "viz_confmaps/confmaps_%03d.png" % epoch), show_figure=False))
-    viz_pred_callback = LambdaCallback(on_epoch_end=lambda epoch, logs: show_pred(model, *viz_sample, save_path=os.path.join(run_path, "viz_pred/pred_%03d.png" % epoch), show_figure=False))
+    viz_grid_callback = LambdaCallback(on_epoch_end=lambda epoch, logs: show_confmap_grid(model, viz_sample, plot=True, save_path=os.path.join(run_path, "viz_confmaps/confmaps_%03d.png" % epoch), show_figure=False))
+    viz_pred_callback = LambdaCallback(on_epoch_end=lambda epoch, logs: show_pred(model, viz_sample, save_path=os.path.join(run_path, "viz_pred/pred_%03d.png" % epoch), show_figure=False))
 
     # Train!
     epoch0 = 0
@@ -453,14 +459,201 @@ def train_test(data_path, label_path, *,
 
     """ evaluate_generator(generator, steps=None, callbacks=None, max_queue_size=10, workers=1, use_multiprocessing=False, verbose=0) """
     t0_test = time()
-    evaluation = model.evaluate_generator(test_datagen, verbose=1, workers=8, use_multiprocessing=True)
+    evaluation = model.predict_generator(test_datagen, steps=None, max_queue_size=10, workers=16, use_multiprocessing=True, verbose=1)
     elapsed_test = time() - t0_test
     print("Total runtime: %.1f mins" % (elapsed_test / 60))
+    
+    Yi = test_confmap[0:, :, :, 0]
+    Y = Yi.reshape(Yi.shape[0], -1)
+    print(Y.shape)
+    Y = np.argmax(Y, axis=-1)
+    gt_coord = np.unravel_index(Y.reshape(1000, -1), Yi.shape)
+    gt_coord = np.concatenate(gt_coord, axis=-1)
+    print(gt_coord.shape)
+    
+    Yi = evaluation[0:, :, :, 0]
+    Y = Yi.reshape(Yi.shape[0], -1)
+    print(Y.shape)
+    Y = np.argmax(Y, axis=-1)
+    evaluation_coord = np.unravel_index(Y.reshape(1000, -1), Yi.shape)
+    evaluation_coord = np.concatenate(evaluation_coord, axis=-1)
+
+    res = np.linalg.norm(gt_coord - evaluation_coord, axis=-1, keepdims=True)
+    res = res < 20
+    res = res.astype(np.int32)
+    res = np.mean(res)
+    print("Accuracy: ", res)
 
     # Save final model
     model.history = history_callback.history
     model.save(os.path.join(run_path, "final_model.h5"))
 
+def test(data_path, label_path, *,
+    base_output_path="models",
+    run_name=None,
+    data_name=None,
+    net_name="leap_cnn",
+    clean=False,
+    box_dset="box",
+    confmap_dset="confmaps",
+    val_size=0.15,
+    preshuffle=True,
+    filters=64,
+    rotate_angle=15,
+    epochs=10,
+    batch_size=10,
+    batches_per_epoch=320,
+    val_batches_per_epoch=10,
+    viz_idx=[0, 100, 200, 300, 400],
+    reduce_lr_factor=0.1,
+    reduce_lr_patience=3,
+    reduce_lr_min_delta=1e-5,
+    reduce_lr_cooldown=0,
+    reduce_lr_min_lr=1e-10,
+    save_every_epoch=False,
+    amsgrad=False,
+    upsampling_layers=True,
+    ):
+    """
+    Trains the network and saves the intermediate results to an output directory.
+
+    :param data_path: Path to an HDF5 file with box and confmaps datasets
+    :param base_output_path: Path to folder in which the run data folder will be saved
+    :param run_name: Name of the training run. If not specified, will be formatted according to other parameters.
+    :param data_name: Name of the dataset for use in formatting run_name
+    :param net_name: Name of the network for use in formatting run_name
+    :param clean: If True, deletes the contents of the run output path
+    :param box_dset: Name of the box dataset in the HDF5 data file
+    :param confmap_dset: Name of the confidence maps dataset in the HDF5 data file
+    :param preshuffle: If True, shuffle prior to splitting the dataset, otherwise validation set will be the last frames
+    :param val_size: Fraction of dataset to use as validation
+    :param filters: Number of filters to use as baseline (see create_model)
+    :param rotate_angle: Images will be augmented by rotating by +-rotate_angle
+    :param epochs: Number of epochs to train for
+    :param batch_size: Number of samples per batch
+    :param batches_per_epoch: Number of batches per epoch (validation is evaluated at the end of the epoch)
+    :param val_batches_per_epoch: Number of batches for validation
+    :param viz_idx: Index of the sample image to use for visualization
+    :param reduce_lr_factor: Factor to reduce the learning rate by (see ReduceLROnPlateau)
+    :param reduce_lr_patience: How many epochs to wait before reduction (see ReduceLROnPlateau)
+    :param reduce_lr_min_delta: Minimum change in error required before reducing LR (see ReduceLROnPlateau)
+    :param reduce_lr_cooldown: How many epochs to wait after reduction before LR can be reduced again (see ReduceLROnPlateau)
+    :param reduce_lr_min_lr: Minimum that the LR can be reduced down to (see ReduceLROnPlateau)
+    :param save_every_epoch: Save weights at every epoch. If False, saves only initial, final and best weights.
+    :param amsgrad: Use AMSGrad variant of optimizer. Can help with training accuracy on rare examples (see Reddi et al., 2018)
+    :param upsampling_layers: Use simple bilinear upsampling layers as opposed to learned transposed convolutions
+    """
+
+    # Load
+    print("data_path:", data_path)
+    # box, confmap = load_dataset(data_path, X_dset=box_dset, Y_dset=confmap_dset)
+    box = load_video(data_path, X_dset=box_dset)
+    confmap = load_label(label_path, *box.shape)
+    # viz_sample = (box[viz_idx], confmap[viz_idx])
+    viz_sample = [(box[x], confmap[x]) for x in viz_idx]
+    print("box.shape:", box.shape)
+
+    # Pull out metadata
+    img_size = box.shape[1:-1]
+    num_output_channels = confmap.shape[-1]
+    print("img_size:", img_size)
+    print("num_output_channels:", num_output_channels)
+
+    # Build run name if needed
+    if data_name == None:
+        data_name = os.path.splitext(os.path.basename(data_path))[0]
+    if run_name == None:
+        # Ex: "WangMice-DiegoCNN_v1.0_filters=64_rot=15_lrfactor=0.1_lrmindelta=1e-05"
+        # run_name = "%s-%s_filters=%d_rot=%d_lrfactor=%.1f_lrmindelta=%g" % (data_name, net_name, filters, rotate_angle, reduce_lr_factor, reduce_lr_min_delta)
+        run_name = "%s-%s_epochs=%d" % (data_name, net_name, epochs)
+    print("data_name:", data_name)
+    print("run_name:", run_name)
+
+    # Create network
+    if isinstance(net_name, keras.models.Model):
+        model = net_name
+        net_name = model.name
+    else:
+        model = create_model(net_name, img_size, num_output_channels, filters=filters, amsgrad=amsgrad, upsampling_layers=upsampling_layers, summary=True)
+    if model == None:
+        print("Could not find model:", net_name)
+        return
+
+    model.load_weights("/home/retina/skw/work/leap/leap/front_foot_left_video1/video1-leap_cnn_epochs=20/best_model.h5")
+    # Initialize run directories
+    # run_path = create_run_folders(run_name, base_path=base_output_path, clean=clean)
+
+    # Data generators/augmentation
+    input_layers = model.input_names
+    output_layers = model.output_names
+    if len(input_layers) > 1 or len(output_layers) > 1:
+        train_datagen = MultiInputOutputPairedImageAugmenter(input_layers, output_layers, box, confmap, batch_size=batch_size, shuffle=False, theta=(-rotate_angle, rotate_angle))
+    else:
+        train_datagen = PairedImageAugmenter(box, confmap, batch_size=batch_size, shuffle=False, theta=(-rotate_angle, rotate_angle))
+
+    """ evaluate_generator(generator, steps=None, callbacks=None, max_queue_size=10, workers=1, use_multiprocessing=False, verbose=0) """
+    t0_test = time()
+    evaluation = model.predict_generator(train_datagen, steps=None, max_queue_size=10, workers=16, use_multiprocessing=True, verbose=1)
+    # print("Evaluation result: ", evaluation)
+    elapsed_test = time() - t0_test
+    print("Total runtime: %.1f mins" % (elapsed_test / 60))
+
+    print("Result shape: ", evaluation.shape)
+    """for i in range(evaluation.shape[0]):
+        np.savetxt("/home/retina/skw/work/leap/leap/models/video1-leap_cnn_epochs=10_04/result.txt", evaluation[i, :, :, 0])"""
+    
+    Yi = confmap[0:, :, :, 0]
+    Y = Yi.reshape(Yi.shape[0], -1)
+    print(Y.shape)
+    Y = np.argmax(Y, axis=-1)
+    gt_coord = np.unravel_index(Y.reshape(5000, -1), Yi.shape)
+    print(gt_coord[0])
+    gt_coord = np.concatenate(gt_coord, axis=-1)
+    print(gt_coord.shape)
+    
+    Yi = evaluation[0:, :, :, 0]
+    Y = Yi.reshape(Yi.shape[0], -1)
+    print(Y.shape)
+    Y = np.argmax(Y, axis=-1)
+    evaluation_coord = np.unravel_index(Y.reshape(5000, -1), Yi.shape)
+    evaluation_coord = np.concatenate(evaluation_coord, axis=-1)
+
+    res = np.linalg.norm(gt_coord - evaluation_coord, axis=-1, keepdims=True)
+    res = res < 20
+    res = res.astype(np.int32)
+    res = np.mean(res)
+    print("Accuracy: ", res)
+
+def cal_acc(label_path=None):
+    confmap = load_label(label_path, *(5000, 600, 896, 1))
+    result = np.zeros((5000, 600, 896, 1))
+    for i in range(5):
+        print("Processing {}".format(i + 1), end="\r")
+        result[i, :, :, 0] = np.loadtxt("/home/retina/skw/work/leap/leap/models/video1-leap_cnn_epochs=10_04/result.txt")
+    print("Result shape: ", result.shape)
+    # pd.DataFrame(result).to_csv("/home/retina/skw/work/leap/leap/models/video1-leap_cnn_epochs=10_04/result.csv")
+    Yi = confmap[0:20, :, :, 0]
+    Y = Yi.reshape(Yi.shape[0], -1)
+    print(Y.shape)
+    Y = np.argmax(Y, axis=-1)
+    gt_coord = np.unravel_index(Y.reshape(20, -1), Yi.shape)
+    gt_coord = np.concatenate(gt_coord, axis=-1)
+    print(gt_coord)
+    print(gt_coord.shape)
+    
+    Yi = result[0:20, :, :, 0]
+    Y = Yi.reshape(Yi.shape[0], -1)
+    print(Y.shape)
+    Y = np.argmax(Y, axis=-1)
+    result_coord = np.unravel_index(Y.reshape(20, -1), Yi.shape)
+    result_coord = np.concatenate(result_coord, axis=-1)
+    print(result_coord)
+
+    res = np.linalg.norm(gt_coord - result_coord, axis=-1, keepdims=True)
+    res = res < 20
+    res = res.astype(np.int32)
+    res = np.mean(res)
+    print("Accuracy: ", res)
 
 if __name__ == "__main__":
     # Turn interactive plotting off
@@ -471,7 +664,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--video_path", type=str, required=True, help="The path of the training video with h5 format")
     parser.add_argument("--label_path", type=str, required=True, help="The path of the label file with format: [frame_idx, x, y, w, h]")
-    parser.add_argument("--base_output_path", type=str, default=["models"], help="The base output path to store the model and visualizaiton results")
+    parser.add_argument("--base_output_path", type=str, default="models", help="The base output path to store the model and visualizaiton results")
     args = parser.parse_args()
 
-    train_test(args.video_path, args.label_path, base_output_path=args.base_output_path[0])
+    train_test(args.video_path, args.label_path, base_output_path=args.base_output_path)
+    # test(args.video_path, args.label_path, base_output_path=args.base_output_path)
+    # cal_acc(args.label_path)

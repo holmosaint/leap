@@ -49,7 +49,7 @@ def leap_cnn(img_size, output_channels, filters=64, upsampling_layers=False, ams
 
     # Compile
     net = Model(inputs=x_in, outputs=x_out, name="LeapCNN")
-    net.compile(optimizer=Adam(amsgrad=amsgrad), loss="mean_squared_error")
+    net.compile(optimizer=Adam(amsgrad=amsgrad, lr=1e-5), loss="mean_squared_error")
 
     if summary:
         net.summary()

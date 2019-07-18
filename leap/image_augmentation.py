@@ -67,8 +67,8 @@ class PairedImageAugmenter(Sequence):
         X = self.X[idx]
         Y = self.Y[idx]
         
-        for i in range(len(X)):
-            X[i], Y[i] = transform_imgs((X[i],Y[i]), theta=self.theta, scale=self.scale)
+        """for i in range(len(X)):
+            X[i], Y[i] = transform_imgs((X[i],Y[i]), theta=self.theta, scale=self.scale)"""
         return X, Y
 
     

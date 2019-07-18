@@ -107,10 +107,11 @@ def load_label(label_path, number_of_samples, rows, cols, channels=1, permute=No
         for line in f.readlines():
             # frame_idx, x, y, w, h, conf
             line = line.split(" ")[:-1]
+            assert len(line) == 5
             frame_idx = int(line[0])
             x = int(line[1]) + int(line[3]) // 2
             y = int(line[2]) + int(line[4]) // 2
-            point[frame_idx - 1:frame_idx, :, 0] = np.array((x, y))
+            point[frame_idx - 1:frame_idx, :, 0] = np.array((y, x))
 
     confmap = px2confmap(point, number_of_samples, rows, cols)
 
@@ -122,12 +123,14 @@ def load_label(label_path, number_of_samples, rows, cols, channels=1, permute=No
 def px2confmap(point, number_of_samples, rows, cols, channels=1, sigma=5, normalize=True):
     assert channels == 1
     confmap = np.zeros((number_of_samples, rows, cols, channels))
-    XX = np.arange(rows * cols).reshape(rows, cols) // rows
+    XX = np.arange(rows * cols).reshape(rows, cols) // cols
     YY = np.arange(rows * cols).reshape(rows, cols) % cols
     for i in range(number_of_samples):
         x = point[i, 0, 0]
         y = point[i, 1, 0]
-        confmap[i:i+1, :, :, 0] = np.exp(-((XX - x) ** 2 + (YY - y) ** 2) / 2 * sigma)
+        confmap[i:i+1, :, :, 0] = np.exp(-((XX - x) ** 2 + (YY - y) ** 2) / 2 / (sigma ** 2))
+        Yi = confmap[i:i+1, :, :, 0]
+        coor = np.unravel_index(np.argmax(Yi), Yi.shape)
 
     if not normalize:
         confmap /= (sigma * math.sqrt(2 * math.pi))
