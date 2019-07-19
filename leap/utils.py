@@ -103,18 +103,19 @@ def load_label(label_path, number_of_samples, rows, cols, channels=1, permute=No
     # Load
     t0 = time()
     point = np.zeros((number_of_samples, 2, channels))
-    with open(label_path, 'r') as f:
-        for line in f.readlines():
-            # frame_idx, x, y, w, h, conf
-            line = line.split(" ")[:-1]
-            assert len(line) == 5
-            frame_idx = int(line[0])
-            x = int(line[1]) + int(line[3]) // 2
-            y = int(line[2]) + int(line[4]) // 2
-            point[frame_idx - 1:frame_idx, :, 0] = np.array((y, x))
+    for i in range(len(label_path)):
+        with open(label_path[i], 'r') as f:
+            for line in f.readlines():
+                # frame_idx, x, y, w, h, conf
+                line = line.split(" ")[:-1]
+                assert len(line) == 5
+                frame_idx = int(line[0])
+                x = int(line[1]) + int(line[3]) // 2
+                y = int(line[2]) + int(line[4]) // 2
+                point[frame_idx - 1:frame_idx, :, i] = np.array((y, x))
 
     start_time = time()
-    confmap = px2confmap(point, number_of_samples, rows, cols)
+    confmap = px2confmap(point, number_of_samples, rows, cols, channels=channels)
     print("Generate conf map time: {}s".format(time() - start_time))
 
     if permute is not None:
@@ -123,13 +124,17 @@ def load_label(label_path, number_of_samples, rows, cols, channels=1, permute=No
     return confmap
 
 def px2confmap(point, number_of_samples, rows, cols, channels=1, sigma=5, normalize=True):
-    assert channels == 1
+    assert channels >= 1
     XX = np.zeros((number_of_samples, rows, cols, channels))
     YY = np.zeros((number_of_samples, rows, cols, channels))
-    XX -= np.arange(rows * cols).reshape(rows, cols, 1) // cols
-    YY -= np.arange(rows * cols).reshape(rows, cols, 1) % cols
-    x = point[:, 0, 0].reshape(number_of_samples, 1, 1, 1)
-    y = point[:, 1, 0].reshape(number_of_samples, 1, 1, 1)
+    tx = np.arange(rows * cols).reshape(rows, cols, 1) // cols
+    ty = np.arange(rows * cols).reshape(rows, cols, 1) % cols
+    tx = np.concatenate([tx for i in range(channels)], axis=-1)
+    ty = np.concatenate([ty for i in range(channels)], axis=-1)
+    XX += tx
+    YY += ty
+    x = point[:, 0, :].reshape(number_of_samples, 1, 1, channels)
+    y = point[:, 1, :].reshape(number_of_samples, 1, 1, channels)
     confmap = np.exp(-((XX - x) ** 2 + (YY - y) ** 2) / 2 / (sigma ** 2))
     """for i in range(number_of_samples):
         x = point[i, 0, 0]

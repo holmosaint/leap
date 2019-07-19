@@ -10,6 +10,15 @@ import pandas as pd
 
 import keras
 from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, LambdaCallback
+import tensorflow as tf
+import keras.backend.tensorflow_backend as KTF
+
+config = tf.ConfigProto()  
+config.gpu_options.allow_growth=True   #不全部占满显存, 按需分配
+session = tf.Session(config=config)
+
+# 设置session
+KTF.set_session(session)
 
 from leap import models
 from leap.image_augmentation import PairedImageAugmenter, MultiInputOutputPairedImageAugmenter
@@ -353,7 +362,7 @@ def train_test(data_path, label_path, *,
     print("data_path:", data_path)
     # box, confmap = load_dataset(data_path, X_dset=box_dset, Y_dset=confmap_dset)
     box = load_video(data_path, X_dset=box_dset)
-    confmap = load_label(label_path, *box.shape)
+    confmap = load_label(label_path, *box.shape[:-1], channels=len(label_path))
     # viz_sample = (box[viz_idx], confmap[viz_idx])
     viz_sample = [(box[x], confmap[x]) for x in viz_idx]
     box, confmap, val_box, val_confmap, test_box, test_confmap, train_idx, val_idx, test_idx = train_val_test_split(box, confmap, train_size=800, val_size=val_size, test_size=1000, shuffle=preshuffle)
@@ -428,6 +437,7 @@ def train_test(data_path, label_path, *,
         checkpointer = ModelCheckpoint(filepath=os.path.join(run_path, "best_model.h5"), verbose=1, save_best_only=True)
     viz_grid_callback = LambdaCallback(on_epoch_end=lambda epoch, logs: show_confmap_grid(model, viz_sample, plot=True, save_path=os.path.join(run_path, "viz_confmaps/confmaps_%03d.png" % epoch), show_figure=False))
     viz_pred_callback = LambdaCallback(on_epoch_end=lambda epoch, logs: show_pred(model, viz_sample, save_path=os.path.join(run_path, "viz_pred/pred_%03d.png" % epoch), show_figure=False))
+    viz_pred_callback = LambdaCallback(on_epoch_begin=lambda epoch, logs: show_pred(model, viz_sample, save_path=os.path.join(run_path, "viz_pred/pred_%03d.png" % epoch), show_figure=False))
 
     # Train!
     epoch0 = 0
@@ -463,7 +473,7 @@ def train_test(data_path, label_path, *,
     elapsed_test = time() - t0_test
     print("Total runtime: %.1f mins" % (elapsed_test / 60))
     
-    Yi = test_confmap[0:, :, :, 0]
+    Yi = test_confmap[0:, :, :, :]
     Y = Yi.reshape(Yi.shape[0], -1)
     print(Y.shape)
     Y = np.argmax(Y, axis=-1)
@@ -471,7 +481,7 @@ def train_test(data_path, label_path, *,
     gt_coord = np.concatenate(gt_coord, axis=-1)
     print(gt_coord.shape)
     
-    Yi = evaluation[0:, :, :, 0]
+    Yi = evaluation[0:, :, :, :]
     Y = Yi.reshape(Yi.shape[0], -1)
     print(Y.shape)
     Y = np.argmax(Y, axis=-1)
@@ -548,7 +558,7 @@ def test(data_path, label_path, *,
     print("data_path:", data_path)
     # box, confmap = load_dataset(data_path, X_dset=box_dset, Y_dset=confmap_dset)
     box = load_video(data_path, X_dset=box_dset)
-    confmap = load_label(label_path, *box.shape)
+    confmap = load_label(label_path, *box.shape[:-1], channels=len(label_path))
     # viz_sample = (box[viz_idx], confmap[viz_idx])
     viz_sample = [(box[x], confmap[x]) for x in viz_idx]
     print("box.shape:", box.shape)
@@ -664,9 +674,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--video_path", type=str, required=True, help="The path of the training video with h5 format")
     parser.add_argument("--label_path", type=str, required=True, help="The path of the label file with format: [frame_idx, x, y, w, h]")
+    parser.add_argument("--label_path_extra", type=str, default=None, help="Add another label path")
     parser.add_argument("--base_output_path", type=str, default="models", help="The base output path to store the model and visualizaiton results")
     args = parser.parse_args()
 
-    # train_test(args.video_path, args.label_path, base_output_path=args.base_output_path)
-    test(args.video_path, args.label_path, base_output_path=args.base_output_path)
-    # cal_acc(args.label_path)
+    label_path = [args.label_path]
+    if args.label_path_extra is not None:
+        label_path.append(args.label_path_extra)
+    train_test(args.video_path, label_path, base_output_path=args.base_output_path)
+    # test(args.video_path, label_path, base_output_path=args.base_output_path)
+    # cal_acc(label_path)
