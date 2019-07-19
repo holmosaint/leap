@@ -356,7 +356,7 @@ def train_test(data_path, label_path, *,
     confmap = load_label(label_path, *box.shape)
     # viz_sample = (box[viz_idx], confmap[viz_idx])
     viz_sample = [(box[x], confmap[x]) for x in viz_idx]
-    box, confmap, val_box, val_confmap, test_box, test_confmap, train_idx, val_idx, test_idx = train_val_test_split(box, confmap, train_size=800, val_size=val_size, test_size=1000, shuffle=preshuffle)
+    box, confmap, val_box, val_confmap, test_box, test_confmap, train_idx, val_idx, test_idx = train_val_test_split(box, confmap, train_size=400, val_size=val_size, test_size=1000, shuffle=preshuffle)
     print("box.shape:", box.shape)
     print("val_box.shape:", val_box.shape)
     print("test_box.shape: ", test_box.shape)
@@ -667,6 +667,6 @@ if __name__ == "__main__":
     parser.add_argument("--base_output_path", type=str, default="models", help="The base output path to store the model and visualizaiton results")
     args = parser.parse_args()
 
-    # train_test(args.video_path, args.label_path, base_output_path=args.base_output_path)
-    test(args.video_path, args.label_path, base_output_path=args.base_output_path)
+    train_test(args.video_path, args.label_path, base_output_path=args.base_output_path)
+    # test(args.video_path, args.label_path, base_output_path=args.base_output_path)
     # cal_acc(args.label_path)
