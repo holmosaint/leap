@@ -383,7 +383,7 @@ def train_test_same(data_path, label_path, *,
             res = res.astype(np.int32)
             np.savetxt(os.path.join(run_path, "dataset_" + str(i) + "_test_result.txt"), res.reshape(-1, 1))
             res = np.mean(res)
-            print("Accuracy on data set %d: %.2f" % (i, res))
+            print("Accuracy on data set %d: %.2f of " % (i, res), L[j])
 
 def train_test_diff(data_path, label_path, test_data_path, test_label_path, *,
     base_output_path="models",
