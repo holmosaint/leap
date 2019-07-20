@@ -871,6 +871,7 @@ if __name__ == "__main__":
     parser.add_argument("--test_label_path_extra", type=str, default=None, help="Add another testing label path")
     parser.add_argument("--train_size", type=int, default=800, help="Training data size")
     parser.add_argument("--mode", type=str, default="same", help="same: train and test on the same dataset; diff: train and test on different datasets")
+    parser.add_argument("--batch", type=int, default=8, help="Batch size for training")
     args = parser.parse_args()
 
     train_path = [args.train_video_path]
@@ -895,10 +896,10 @@ if __name__ == "__main__":
 
     # train and test on the same video
     if args.mode == "same":
-        train_test_same(train_path, label_path, train_size=args.train_size, base_output_path=args.base_output_path)
+        train_test_same(train_path, label_path, batch_size=args.batch, train_size=args.train_size, base_output_path=args.base_output_path)
     elif args.mode == "diff":
         # train and test on different videos
-        train_test_diff(train_path, label_path, test_path, test_label_path, train_size=args.train_size, base_output_path=args.base_output_path)
+        train_test_diff(train_path, label_path, test_path, test_label_path, batch_size=args.batch, train_size=args.train_size, base_output_path=args.base_output_path)
     else:
         print("--mode should be in [same, diff]")
 
