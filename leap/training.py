@@ -530,7 +530,7 @@ def train_test_diff(data_path, label_path, test_data_path, test_label_path, *,
     # confmap = load_label(label_path, *box.shape[:-1], channels=len(label_path))
     test_confmap = list()
     for i in range(len(test_label_path)):
-        confmap.append(load_confmap(test_label_path[i]))
+        test_confmap.append(load_confmap(test_label_path[i]))
 
     # model.load_weights("/home/retina/skw/work/leap/leap/models/video1-leap_cnn_epochs=10_04/final_model.h5")
     # Initialize run directories
