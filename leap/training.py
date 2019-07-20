@@ -465,15 +465,7 @@ def train_test_diff(data_path, label_path, test_data_path, test_label_path, *,
     print("Length of confmap: ", len(confmap))
 
     # viz_sample = (box[viz_idx], confmap[viz_idx])
-<<<<<<< HEAD
-    viz_sample = [(box[x], confmap[x]) for x in viz_idx]
-    box, confmap, val_box, val_confmap, test_box, test_confmap, train_idx, val_idx, test_idx = train_val_test_split(box, confmap, train_size=400, val_size=val_size, test_size=1000, shuffle=preshuffle)
-    print("box.shape:", box.shape)
-    print("val_box.shape:", val_box.shape)
-    print("test_box.shape: ", test_box.shape)
-=======
     viz_sample = [(box[0][x], confmap[0][x]) for x in viz_idx]
->>>>>>> bf9b592ccaad1f3bac9582f3cb08e8ab87b59539
 
     # Pull out metadata
     img_size = box[0].shape[1:]
@@ -877,6 +869,7 @@ if __name__ == "__main__":
     parser.add_argument("--test_label_path_extra", type=str, default=None, help="Add another testing label path")
     parser.add_argument("--train_size", type=int, default=800, help="Training data size")
     parser.add_argument("--mode", type=str, default="same", help="same: train and test on the same dataset; diff: train and test on different datasets")
+    parser.add_argument("--batch", type=int, default=8, help="Batch size for training")
     args = parser.parse_args()
 
     train_path = [args.train_video_path]
@@ -901,10 +894,10 @@ if __name__ == "__main__":
 
     # train and test on the same video
     if args.mode == "same":
-        train_test_same(train_path, label_path, train_size=args.train_size, base_output_path=args.base_output_path)
+        train_test_same(train_path, label_path, batch_size=args.batch, train_size=args.train_size, base_output_path=args.base_output_path)
     elif args.mode == "diff":
         # train and test on different videos
-        train_test_diff(train_path, label_path, test_path, test_label_path, train_size=args.train_size, base_output_path=args.base_output_path)
+        train_test_diff(train_path, label_path, test_path, test_label_path, batch_size=args.batch, train_size=args.train_size, base_output_path=args.base_output_path)
     else:
         print("--mode should be in [same, diff]")
 
