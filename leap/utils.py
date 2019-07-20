@@ -97,6 +97,18 @@ def load_video(data_path, X_dset="box", permute=(0,3,2,1)):
     
     return X
 
+def load_confmap(label_path, Y_dset="confmap", permute=(0,3,2,1)):
+    """ Loads confmap """
+
+    # Load
+    t0 = time()
+    with h5py.File(label_path, "r") as f:
+        confmap = f[Y_dset][:]
+    print("Loaded %d confmaps [%.1fs]" % (len(confmap), time() - t0))
+    print("Confmaps shape: ", confmap.shape)
+
+    return confmap
+
 def load_label(label_path, number_of_samples, rows, cols, channels=1, permute=None):
     """ Loads label and generate confidence maps"""
 
@@ -125,14 +137,10 @@ def load_label(label_path, number_of_samples, rows, cols, channels=1, permute=No
 
 def px2confmap(point, number_of_samples, rows, cols, channels=1, sigma=5, normalize=True):
     assert channels >= 1
-    XX = np.zeros((number_of_samples, rows, cols, channels))
-    YY = np.zeros((number_of_samples, rows, cols, channels))
-    tx = np.arange(rows * cols).reshape(rows, cols, 1) // cols
-    ty = np.arange(rows * cols).reshape(rows, cols, 1) % cols
-    tx = np.concatenate([tx for i in range(channels)], axis=-1)
-    ty = np.concatenate([ty for i in range(channels)], axis=-1)
-    XX += tx
-    YY += ty
+    XX = np.arange(rows * cols).reshape(rows, cols, 1) // cols
+    YY = np.arange(rows * cols).reshape(rows, cols, 1) % cols
+    XX = np.concatenate([XX for i in range(channels)], axis=-1)
+    YY = np.concatenate([YY for i in range(channels)], axis=-1)
     x = point[:, 0, :].reshape(number_of_samples, 1, 1, channels)
     y = point[:, 1, :].reshape(number_of_samples, 1, 1, channels)
     confmap = np.exp(-((XX - x) ** 2 + (YY - y) ** 2) / 2 / (sigma ** 2))
