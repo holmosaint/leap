@@ -360,28 +360,30 @@ def train_test_same(data_path, label_path, *,
         elapsed_test = time() - t0_test
         print("Total evaluation time on dataset %d: %.1f mins" % (i, elapsed_test / 60))
 
-        Yi = test_confmap[i]
-        Y = Yi.reshape(Yi.shape[0], -1)
-        print(Y.shape)
-        Y = np.argmax(Y, axis=-1)
-        gt_coord = np.unravel_index(Y.reshape(2500, -1), Yi.shape)
-        gt_coord = np.concatenate(gt_coord, axis=-1)
-        print(gt_coord.shape)
-        
-        Yi = evaluation
-        Y = Yi.reshape(Yi.shape[0], -1)
-        print(Y.shape)
-        Y = np.argmax(Y, axis=-1)
-        evaluation_coord = np.unravel_index(Y.reshape(2500, -1), Yi.shape)
-        evaluation_coord = np.concatenate(evaluation_coord, axis=-1)
+        L = ['back_foot', 'front_foot']
+        for j in range(num_output_channels):
+            Yi = test_confmap[i][:, :, :, j]
+            Y = Yi.reshape(Yi.shape[0], -1)
+            print(Y.shape)
+            Y = np.argmax(Y, axis=-1)
+            gt_coord = np.unravel_index(Y.reshape(2500, -1), Yi.shape)
+            gt_coord = np.concatenate(gt_coord, axis=-1)
+            print(gt_coord.shape)
+            
+            Yi = evaluation[:, :, :, j]
+            Y = Yi.reshape(Yi.shape[0], -1)
+            print(Y.shape)
+            Y = np.argmax(Y, axis=-1)
+            evaluation_coord = np.unravel_index(Y.reshape(2500, -1), Yi.shape)
+            evaluation_coord = np.concatenate(evaluation_coord, axis=-1)
 
-        res = np.linalg.norm(gt_coord - evaluation_coord, axis=-1, keepdims=True)
-        print(res.shape)
-        res = res < 20
-        res = res.astype(np.int32)
-        np.savetxt(os.path.join(run_path, "dataset_" + str(i) + "_test_result.txt"), res.reshape(-1, 1))
-        res = np.mean(res)
-        print("Accuracy on data set %d: %.2f" % (i, res))
+            res = np.linalg.norm(gt_coord - evaluation_coord, axis=-1, keepdims=True)
+            print(res.shape)
+            res = res < 20
+            res = res.astype(np.int32)
+            np.savetxt(os.path.join(run_path, "dataset_" + str(i) + "_test_result.txt"), res.reshape(-1, 1))
+            res = np.mean(res)
+            print("Accuracy on data set %d: %.2f" % (i, res))
 
 def train_test_diff(data_path, label_path, test_data_path, test_label_path, *,
     base_output_path="models",
