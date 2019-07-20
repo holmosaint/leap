@@ -97,6 +97,18 @@ def load_video(data_path, X_dset="box", permute=(0,3,2,1)):
     
     return X
 
+def load_confmap(label_path, Y_dset="confmap", permute=(0,3,2,1)):
+    """ Loads confmap """
+
+    # Load
+    t0 = time()
+    with h5py.File(label_path, "r") as f:
+        confmap = f[Y_dset][:]
+    print("Loaded %d confmaps [%.1fs]" % (len(confmap), time() - t0))
+    print("Confmaps shape: ", confmap.shape)
+
+    return confmap
+
 def load_label(label_path, number_of_samples, rows, cols, channels=1, permute=None):
     """ Loads label and generate confidence maps"""
 
