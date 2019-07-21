@@ -325,16 +325,16 @@ def train_test_same(data_path, label_path, *,
 
     # release memory
     train_box.clear()
-    val_box.clear()
-    test_box.clear()
+    val_box = 0
+    test_box = 0
     train_confmap.clear()
-    val_confmap.clear()
+    val_confmap = 0
     # test_confmap = list()
-    train_idx.clear()
-    val_idx.clear()
-    test_idx.clear()
-    box.clear()
-    confmap.clear()
+    train_idx = 0
+    val_idx = 0
+    test_idx = 0
+    box = 0
+    confmap = 0
 
     # Train!
     epoch0 = 0
