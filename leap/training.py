@@ -27,6 +27,7 @@ from leap.utils import load_dataset, load_video, load_label, load_confmap
 
 import argparse
 import sys
+import scipy.io as sio
 
 
 def train_val_split(X, Y, val_size=0.15, shuffle=True):
@@ -319,6 +320,19 @@ def train_test_same(data_path, label_path, *,
     viz_pred_callback = LambdaCallback(on_epoch_end=lambda epoch, logs: show_pred(model, viz_sample, save_path=os.path.join(run_path, "viz_pred/pred_%03d.png" % epoch), show_figure=False))
     viz_pred_callback = LambdaCallback(on_epoch_begin=lambda epoch, logs: show_pred(model, viz_sample, save_path=os.path.join(run_path, "viz_pred/pred_%03d.png" % epoch), show_figure=False))
 
+    # release memory
+    train_box.clear()
+    val_box.clear()
+    test_box.clear()
+    train_confmap.clear()
+    val_confmap.clear()
+    # test_confmap = list()
+    train_idx.clear()
+    val_idx.clear()
+    test_idx.clear()
+    box.clear()
+    confmap.clear()
+
     # Train!
     epoch0 = 0
     t0_train = time()
@@ -356,7 +370,7 @@ def train_test_same(data_path, label_path, *,
     for i in range(len(data_path)):
         """ evaluate_generator(generator, steps=None, callbacks=None, max_queue_size=10, workers=1, use_multiprocessing=False, verbose=0) """
         t0_test = time()
-        evaluation = model.predict_generator(test_datagen, steps=None, max_queue_size=10, workers=16, use_multiprocessing=True, verbose=1)
+        evaluation = model.predict_generator(test_datagen[i], steps=None, max_queue_size=10, workers=16, use_multiprocessing=True, verbose=1)
         elapsed_test = time() - t0_test
         print("Total evaluation time on dataset %d: %.1f mins" % (i, elapsed_test / 60))
 
@@ -651,7 +665,7 @@ def train_test_diff(data_path, label_path, test_data_path, test_label_path, *,
         res = np.mean(res)
         print("Accuracy on data set %d: %.2f" % (i, res))
 
-def test(data_path, label_path, *,
+def test(data_path, label_path, model_path, test_idx, *,
     base_output_path="models",
     run_name=None,
     data_name=None,
@@ -707,6 +721,10 @@ def test(data_path, label_path, *,
     :param amsgrad: Use AMSGrad variant of optimizer. Can help with training accuracy on rare examples (see Reddi et al., 2018)
     :param upsampling_layers: Use simple bilinear upsampling layers as opposed to learned transposed convolutions
     """
+    if len(data_path) > 1 or len(label_path) > 1:
+        print("Test only supports single date set yet")
+        sys.exit(1)
+
     if len(data_path) != len(label_path):
         print("The size of data path is not the same as label path")
         sys.exit(1)
@@ -716,25 +734,33 @@ def test(data_path, label_path, *,
     # box, confmap = load_dataset(data_path, X_dset=box_dset, Y_dset=confmap_dset)
     box = list()
     for i in range(len(data_path)):
-        box[i] = load_video(data_path[0], X_dset=box_dset)
+        box.append(load_video(data_path[0], X_dset=box_dset))
         print("Data set {} shape: {}".format(i, box[i].shape))
 
     # confmap = load_label(label_path, *box.shape[:-1], channels=len(label_path))
     confmap = list()
     for i in range(len(label_path)):
-        confmap[i] = load_confmap(label_path[i])
-    # viz_sample = (box[viz_idx], confmap[viz_idx])
-    viz_sample = [(box[x], confmap[x]) for x in viz_idx]
+        confmap.append(load_confmap(label_path[i]))
 
     # Pull out metadata
-    img_size = box.shape[1:-1]
-    num_output_channels = confmap.shape[-1]
+    img_size = box[0].shape[1:-1]
+    num_output_channels = confmap[0].shape[-1]
     print("img_size:", img_size)
     print("num_output_channels:", num_output_channels)
 
+    if type(test_idx) == str:
+        mat_contends = sio.loadmat(test_idx)
+        test_idx = mat_contends["test_idx"]
+    
+    print(type(test_idx))
+    print(test_idx.shape)
+
+    box[0] = box[0][test_idx][0]
+    confmap[0] = confmap[0][test_idx][0]
+
     # Build run name if needed
     if data_name == None:
-        data_name = os.path.splitext(os.path.basename(data_path))[0]
+        data_name = os.path.splitext(os.path.basename(data_path[0]))[0]
     if run_name == None:
         # Ex: "WangMice-DiegoCNN_v1.0_filters=64_rot=15_lrfactor=0.1_lrmindelta=1e-05"
         # run_name = "%s-%s_filters=%d_rot=%d_lrfactor=%.1f_lrmindelta=%g" % (data_name, net_name, filters, rotate_angle, reduce_lr_factor, reduce_lr_min_delta)
@@ -752,50 +778,60 @@ def test(data_path, label_path, *,
         print("Could not find model:", net_name)
         return
 
-    model.load_weights("/home/retina/skw/work/leap/leap/back_front_foot_left_video1/video1-leap_cnn_epochs=20/best_model.h5")
+    model.load_weights(model_path)
     # Initialize run directories
-    # run_path = create_run_folders(run_name, base_path=base_output_path, clean=clean)
+    run_path = create_run_folders(run_name, base_path=base_output_path, clean=clean)
 
     # Data generators/augmentation
     input_layers = model.input_names
     output_layers = model.output_names
     if len(input_layers) > 1 or len(output_layers) > 1:
-        train_datagen = MultiInputOutputPairedImageAugmenter(input_layers, output_layers, box, confmap, batch_size=batch_size, shuffle=False, theta=(-rotate_angle, rotate_angle))
+        test_datagen = list()
+        for i in range(len(data_path)):
+            test_datagen.append(MultiInputOutputPairedImageAugmenter(input_layers, output_layers, box[0], confmap[0], batch_size=batch_size, shuffle=False, theta=(-rotate_angle, rotate_angle)))
     else:
-        train_datagen = PairedImageAugmenter(box, confmap, batch_size=batch_size, shuffle=False, theta=(-rotate_angle, rotate_angle))
+        test_datagen = list()
+        for i in range(len(data_path)):
+            test_datagen.append(PairedImageAugmenter(box[0], confmap[0], batch_size=batch_size, shuffle=False, theta=(-rotate_angle, rotate_angle)))
 
-    """ evaluate_generator(generator, steps=None, callbacks=None, max_queue_size=10, workers=1, use_multiprocessing=False, verbose=0) """
-    t0_test = time()
-    evaluation = model.predict_generator(train_datagen, steps=None, max_queue_size=10, workers=16, use_multiprocessing=True, verbose=1)
-    # print("Evaluation result: ", evaluation)
-    elapsed_test = time() - t0_test
-    print("Total runtime: %.1f mins" % (elapsed_test / 60))
+    # release memory
+    box.clear()
 
-    print("Result shape: ", evaluation.shape)
-    """for i in range(evaluation.shape[0]):
-        np.savetxt("/home/retina/skw/work/leap/leap/models/video1-leap_cnn_epochs=10_04/result.txt", evaluation[i, :, :, 0])"""
-    
-    Yi = confmap[0:, :, :, :]
-    Y = Yi.reshape(Yi.shape[0], -1)
-    print(Y.shape)
-    Y = np.argmax(Y, axis=-1)
-    gt_coord = np.unravel_index(Y.reshape(5000, -1), Yi.shape)
-    print(gt_coord[0])
-    gt_coord = np.concatenate(gt_coord, axis=-1)
-    print(gt_coord.shape)
-    
-    Yi = evaluation[0:, :, :, :]
-    Y = Yi.reshape(Yi.shape[0], -1)
-    print(Y.shape)
-    Y = np.argmax(Y, axis=-1)
-    evaluation_coord = np.unravel_index(Y.reshape(5000, -1), Yi.shape)
-    evaluation_coord = np.concatenate(evaluation_coord, axis=-1)
+    test_len = test_idx.shape[-1]
 
-    res = np.linalg.norm(gt_coord - evaluation_coord, axis=-1, keepdims=True)
-    res = res < 20
-    res = res.astype(np.int32)
-    res = np.mean(res)
-    print("Accuracy: ", res)
+    print("Checking accuracy...")
+    for i in range(len(data_path)):
+        """ evaluate_generator(generator, steps=None, callbacks=None, max_queue_size=10, workers=1, use_multiprocessing=False, verbose=0) """
+        t0_test = time()
+        evaluation = model.predict_generator(test_datagen[i], steps=None, max_queue_size=10, workers=16, use_multiprocessing=True, verbose=1)
+        elapsed_test = time() - t0_test
+        print("Total evaluation time on dataset %d: %.1f mins" % (i, elapsed_test / 60))
+
+        L = ['back_foot', 'front_foot']
+        for j in range(num_output_channels):
+            Yi = confmap[i][:, :, :, j]
+            Y = Yi.reshape(Yi.shape[0], -1)
+            print(Y.shape)
+            Y = np.argmax(Y, axis=-1)
+            gt_coord = np.unravel_index(Y.reshape(test_len, -1), Yi.shape)
+            gt_coord = np.concatenate(gt_coord, axis=-1)
+            print(gt_coord.shape)
+            
+            Yi = evaluation[:, :, :, j]
+            Y = Yi.reshape(Yi.shape[0], -1)
+            print(Y.shape)
+            Y = np.argmax(Y, axis=-1)
+            evaluation_coord = np.unravel_index(Y.reshape(test_len, -1), Yi.shape)
+            evaluation_coord = np.concatenate(evaluation_coord, axis=-1)
+
+            res = np.linalg.norm(gt_coord - evaluation_coord, axis=-1, keepdims=True)
+            print(res.shape)
+            res = res < 20
+            res = res.astype(np.int32)
+            np.savetxt(os.path.join(run_path, "dataset_" + str(i) + "_test_result.txt"), res.reshape(-1, 1))
+            res = np.mean(res)
+            print("Accuracy on data set %d: %.2f of " % (i, res), L[j])
+            print("Save results in ", os.path.join(run_path, "dataset_" + str(i) + "_test_result.txt"))
 
 def cal_acc(label_path=None):
     confmap = load_label(label_path, *(5000, 600, 896, 1))
@@ -872,6 +908,8 @@ if __name__ == "__main__":
     parser.add_argument("--train_size", type=int, default=800, help="Training data size")
     parser.add_argument("--mode", type=str, default="same", help="same: train and test on the same dataset; diff: train and test on different datasets")
     parser.add_argument("--batch", type=int, default=8, help="Batch size for training")
+    parser.add_argument("--test_idx", type=str, default=None, help="Test idx for test only")
+    parser.add_argument("--model_path", type=str, default=None, help="Trained model path")
     args = parser.parse_args()
 
     train_path = [args.train_video_path]
@@ -900,8 +938,10 @@ if __name__ == "__main__":
     elif args.mode == "diff":
         # train and test on different videos
         train_test_diff(train_path, label_path, test_path, test_label_path, batch_size=args.batch, train_size=args.train_size, base_output_path=args.base_output_path)
+    elif args.mode == "test":
+        test(train_path, label_path, args.model_path, args.test_idx, batch_size=args.batch, base_output_path=args.base_output_path)
     else:
-        print("--mode should be in [same, diff]")
+        print("--mode should be in [same, diff, test]")
 
     # test(train_path, label_path, base_output_path=args.base_output_path)
     # cal_acc(label_path)
