@@ -356,7 +356,7 @@ def train_test_same(data_path, label_path, *,
     for i in range(len(data_path)):
         """ evaluate_generator(generator, steps=None, callbacks=None, max_queue_size=10, workers=1, use_multiprocessing=False, verbose=0) """
         t0_test = time()
-        evaluation = model.predict_generator(test_datagen, steps=None, max_queue_size=10, workers=16, use_multiprocessing=True, verbose=1)
+        evaluation = model.predict_generator(test_datagen[i], steps=None, max_queue_size=10, workers=4, use_multiprocessing=False, verbose=1)
         elapsed_test = time() - t0_test
         print("Total evaluation time on dataset %d: %.1f mins" % (i, elapsed_test / 60))
 
@@ -624,7 +624,7 @@ def train_test_diff(data_path, label_path, test_data_path, test_label_path, *,
     for i in range(len(data_path)):
         """ evaluate_generator(generator, steps=None, callbacks=None, max_queue_size=10, workers=1, use_multiprocessing=False, verbose=0) """
         t0_test = time()
-        evaluation = model.predict_generator(test_datagen, steps=None, max_queue_size=10, workers=16, use_multiprocessing=True, verbose=1)
+        evaluation = model.predict_generator(test_datagen[i], steps=None, max_queue_size=10, workers=4, use_multiprocessing=False, verbose=1)
         elapsed_test = time() - t0_test
         print("Total evaluation time on dataset %d: %.1f mins" % (i, elapsed_test / 60))
 
@@ -766,7 +766,7 @@ def test(data_path, label_path, *,
 
     """ evaluate_generator(generator, steps=None, callbacks=None, max_queue_size=10, workers=1, use_multiprocessing=False, verbose=0) """
     t0_test = time()
-    evaluation = model.predict_generator(train_datagen, steps=None, max_queue_size=10, workers=16, use_multiprocessing=True, verbose=1)
+    evaluation = model.predict_generator(train_datagen, steps=None, max_queue_size=10, workers=4, use_multiprocessing=True, verbose=1)
     # print("Evaluation result: ", evaluation)
     elapsed_test = time() - t0_test
     print("Total runtime: %.1f mins" % (elapsed_test / 60))
@@ -872,6 +872,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_size", type=int, default=800, help="Training data size")
     parser.add_argument("--mode", type=str, default="same", help="same: train and test on the same dataset; diff: train and test on different datasets")
     parser.add_argument("--batch", type=int, default=8, help="Batch size for training")
+    parser.add_argument("--epoch", type=int, default=20, help="Training epochs")
     args = parser.parse_args()
 
     train_path = [args.train_video_path]
@@ -896,10 +897,10 @@ if __name__ == "__main__":
 
     # train and test on the same video
     if args.mode == "same":
-        train_test_same(train_path, label_path, batch_size=args.batch, train_size=args.train_size, base_output_path=args.base_output_path)
+        train_test_same(train_path, label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path)
     elif args.mode == "diff":
         # train and test on different videos
-        train_test_diff(train_path, label_path, test_path, test_label_path, batch_size=args.batch, train_size=args.train_size, base_output_path=args.base_output_path)
+        train_test_diff(train_path, label_path, test_path, test_label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path)
     else:
         print("--mode should be in [same, diff]")
 
