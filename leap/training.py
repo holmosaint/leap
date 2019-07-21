@@ -28,6 +28,7 @@ from leap.utils import load_dataset, load_video, load_label, load_confmap
 import argparse
 import sys
 import scipy.io as sio
+import math
 
 
 def train_val_split(X, Y, val_size=0.15, shuffle=True):
@@ -196,6 +197,8 @@ def train_test_same(data_path, label_path, *,
     :param amsgrad: Use AMSGrad variant of optimizer. Can help with training accuracy on rare examples (see Reddi et al., 2018)
     :param upsampling_layers: Use simple bilinear upsampling layers as opposed to learned transposed convolutions
     """
+    batches_per_epoch = math.ceil(train_size / batch_size)
+
     if len(data_path) != len(label_path):
         print("The size of data path is not the same as label path")
         sys.exit(1)
@@ -455,6 +458,8 @@ def train_test_diff(data_path, label_path, test_data_path, test_label_path, *,
     :param amsgrad: Use AMSGrad variant of optimizer. Can help with training accuracy on rare examples (see Reddi et al., 2018)
     :param upsampling_layers: Use simple bilinear upsampling layers as opposed to learned transposed convolutions
     """
+    batches_per_epoch = math.ceil(train_size / batch_size)
+
     if len(data_path) != len(label_path):
         print("The size of data path of training data is not the same as label path")
         sys.exit(1)
