@@ -398,7 +398,7 @@ def train_test_same(data_path, label_path, *,
             print(res.shape)
             res = res < 20
             res = res.astype(np.int32)
-            np.savetxt(os.path.join(run_path, "dataset_" + str(i) + "_test_result.txt"), res.reshape(-1, 1))
+            np.savetxt(os.path.join(run_path, "dataset_" + str(i) + "_" + L[j] + "_test_result.txt"), res.reshape(-1, 1))
             res = np.mean(res)
             print("Accuracy on data set %d: %.2f of " % (i, res), L[j])
 
@@ -666,7 +666,7 @@ def train_test_diff(data_path, label_path, test_data_path, test_label_path, *,
         print(res.shape)
         res = res < 20
         res = res.astype(np.int32)
-        np.savetxt(os.path.join(run_path, "dataset_" + str(i) + "_test_result.txt"), res.reshape(-1, 1))
+        np.savetxt(os.path.join(run_path, "dataset_" + str(i) + "_" + L[j] + "_test_result.txt"), res.reshape(-1, 1))
         res = np.mean(res)
         print("Accuracy on data set %d: %.2f" % (i, res))
 
@@ -833,10 +833,10 @@ def test(data_path, label_path, model_path, test_idx, *,
             print(res.shape)
             res = res < 20
             res = res.astype(np.int32)
-            np.savetxt(os.path.join(run_path, "dataset_" + str(i) + "_test_result.txt"), res.reshape(-1, 1))
+            np.savetxt(os.path.join(run_path, "dataset_" + str(i) + "_" + L[j] + "_test_result.txt"), res.reshape(-1, 1))
             res = np.mean(res)
             print("Accuracy on data set %d: %.2f of " % (i, res), L[j])
-            print("Save results in ", os.path.join(run_path, "dataset_" + str(i) + "_test_result.txt"))
+            print("Save results in ", os.path.join(run_path, "dataset_" + str(i) + "_" + L[j] + "_test_result.txt"))
 
 def cal_acc(label_path=None):
     confmap = load_label(label_path, *(5000, 600, 896, 1))
