@@ -109,12 +109,13 @@ def load_confmap(label_path, Y_dset="confmap", permute=(0,3,2,1)):
 
     return confmap
 
-def load_label(label_path, number_of_samples, rows, cols, channels=1, permute=None):
+def load_label(label_path, number_of_samples, rows, cols, channels=1, permute=None, resize=None):
     """ Loads label and generate confidence maps"""
 
     # Load
     t0 = time()
     point = np.zeros((number_of_samples, 2, channels))
+    print("Resize: ", resize)
     for i in range(len(label_path)):
         with open(label_path[i], 'r') as f:
             for line in f.readlines():
@@ -124,6 +125,8 @@ def load_label(label_path, number_of_samples, rows, cols, channels=1, permute=No
                 frame_idx = int(line[0])
                 x = int(line[1]) + int(line[3]) // 2
                 y = int(line[2]) + int(line[4]) // 2
+                if resize is not None:
+                    x, y = x * 896.0 // resize[1] , y * 600.0 // resize[0]
                 point[frame_idx - 1:frame_idx, :, i] = np.array((y, x))
 
     start_time = time()
