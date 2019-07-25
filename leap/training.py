@@ -972,6 +972,9 @@ def test(data_path, label_path, model_path, test_idx, *,
     if type(test_idx) == str:
         mat_contends = sio.loadmat(test_idx)
         test_idx = mat_contends["test_idx"]
+    elif test_idx is None:
+        ts = np.random.randint(0, 2500)
+        test_idx = np.arange(ts, ts + 2500)
     
     print(type(test_idx))
     print(test_idx.shape)
@@ -1117,9 +1120,9 @@ if __name__ == "__main__":
     # Wrapper for running from commandline
     # clize.run(train)
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train_video_path", type=str, required=True, help="The path of the training video with h5 format")
+    parser.add_argument("--train_video_path", type=str, required=False, help="The path of the training video with h5 format")
     parser.add_argument("--train_video_path_extra", type=str, default=None, required=False, help="Add another video path")   
-    parser.add_argument("--label_path", type=str, required=True, help="The path of the label file with format: [frame_idx, x, y, w, h]")
+    parser.add_argument("--label_path", type=str, required=False, help="The path of the label file with format: [frame_idx, x, y, w, h]")
     parser.add_argument("--label_path_extra", type=str, default=None, help="Add another label path")
     parser.add_argument("--base_output_path", type=str, default="models", help="The base output path to store the model and visualizaiton results")
     parser.add_argument("--test_video_path", type=str, default=None, help="The test video path")
