@@ -1166,7 +1166,7 @@ if __name__ == "__main__":
     elif args.mode == "train":
         train_only(train_path, label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path)
     elif args.mode == "test":
-        test(train_path, label_path, args.model_path, args.test_idx, batch_size=args.batch, base_output_path=args.base_output_path)
+        test(test_path, test_label_path, args.model_path, args.test_idx, batch_size=args.batch, base_output_path=args.base_output_path)
     else:
         print("--mode should be in [same, diff, test]")
 
