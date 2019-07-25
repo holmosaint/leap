@@ -979,8 +979,9 @@ def test(data_path, label_path, model_path, test_idx, *,
     print(type(test_idx))
     print(test_idx.shape)
 
-    box[0] = box[0][test_idx][0]
-    confmap[0] = confmap[0][test_idx][0]
+    box[0] = box[0][test_idx]
+    confmap[0] = confmap[0][test_idx]
+    print("Box shape: ", box[0].shape)
 
     # Build run name if needed
     if data_name == None:
