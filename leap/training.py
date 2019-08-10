@@ -1139,7 +1139,7 @@ if __name__ == "__main__":
     parser.add_argument("--test_idx", type=str, default=None, help="Test idx for test only")
     parser.add_argument("--model_path", type=str, default=None, help="Trained model path")
     parser.add_argument("--epoch", type=int, default=20, help="Training epochs")
-	parser.add_argument("--test_start", type=int, default=800, help="Test start")
+    parser.add_argument("--test_start", type=int, default=800, help="Test start")
     args = parser.parse_args()
 
     train_path = [args.train_video_path]
