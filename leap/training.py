@@ -50,6 +50,9 @@ def train_val_test_split(X, Y, train_size=0.5, val_size=0.15, test_size=None, sh
     """ Splits datasets into training and validation sets """
     """ The test sequence should be sequential """
 
+    # Fix random seed
+    np.random.seed(1)
+
     if train_size < 1:
         train_size = int(np.round(len(X) * train_size))
     if val_size < 1:
@@ -60,7 +63,9 @@ def train_val_test_split(X, Y, train_size=0.5, val_size=0.15, test_size=None, sh
     else:
         test_size = len(X) - train_size
     
-    test_start = np.random.randint(0, len(X) - test_size - 1)
+    test_start = np.random.randint(1500, len(X) - test_size - 1)
+    test_start = 800
+    print("Test start: ", test_start)
     test_idx = np.arange(test_start, test_start + test_size)
 
     train_set = list(range(0, test_start))
@@ -168,8 +173,7 @@ def train_test_same(data_path, label_path, *,
     amsgrad=False,
     upsampling_layers=True,
     ):
-    """
-    Trains the network and saves the intermediate results to an output directory.
+    """Trains the network and saves the intermediate results to an output directory.
 
     :param data_path: Path to an HDF5 file with box and confmaps datasets
     :param base_output_path: Path to folder in which the run data folder will be saved
