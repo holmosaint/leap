@@ -46,7 +46,7 @@ def train_val_split(X, Y, val_size=0.15, shuffle=True):
 
     return X[idx], Y[idx], X[val_idx], Y[val_idx], idx, val_idx
 
-def train_val_test_split(X, Y, train_size=0.5, val_size=0.15, test_size=None, shuffle=True):
+def train_val_test_split(X, Y, train_size=0.5, val_size=0.15, test_start=800, test_size=None, shuffle=True):
     """ Splits datasets into training and validation sets """
     """ The test sequence should be sequential """
 
@@ -62,10 +62,10 @@ def train_val_test_split(X, Y, train_size=0.5, val_size=0.15, test_size=None, sh
             test_size = int(np.round(len(X) * test_size))
     else:
         test_size = len(X) - train_size
-    
-    test_start = np.random.randint(1500, len(X) - test_size - 1)
-    test_start = 800
-    print("Test start: ", test_start)
+
+    test_start = test_start
+    print("Test start: ", test_start)=
+    # test_start = np.random.randint(0, len(X) - test_size - 1)
     test_idx = np.arange(test_start, test_start + test_size)
 
     train_set = list(range(0, test_start))
@@ -147,6 +147,7 @@ def create_model(net_name, img_size, output_channels, **kwargs):
     return compile_model(img_size, output_channels, **kwargs)
 
 def train_test_same(data_path, label_path, *,
+	test_start=800, 
     base_output_path="models",
     run_name=None,
     data_name=None,
@@ -262,7 +263,7 @@ def train_test_same(data_path, label_path, *,
     test_idx = list()
     for i in range(len(data_path)):
         b, cm, vb, vcm, tb, tcm, tid, vid, teid \
-            = train_val_test_split(box[i], confmap[i], train_size=train_size, val_size=val_size, test_size=2500)
+            = train_val_test_split(box[i], confmap[i], train_size=train_size, val_size=val_size, test_size=2500, test_start=test_start)
         train_box.append(b)
         train_confmap.append(cm)
         val_box.append(vb)
@@ -408,6 +409,7 @@ def train_test_same(data_path, label_path, *,
             print("Accuracy on data set %d: %.2f of " % (i, res), L[j])
 
 def train_test_diff(data_path, label_path, test_data_path, test_label_path, *,
+	test_start=800, 
     base_output_path="models",
     run_name=None,
     data_name=None,
@@ -532,7 +534,7 @@ def train_test_diff(data_path, label_path, test_data_path, test_label_path, *,
     test_idx = list()
     for i in range(len(data_path)):
         b, cm, vb, vcm, tb, tcm, tid, vid, teid \
-            = train_val_test_split(box[i], confmap[i], train_size=train_size, val_size=val_size, test_size=2500)
+            = train_val_test_split(box[i], confmap[i], train_size=train_size, val_size=val_size, test_size=2500, test_start=test_start)
         train_box.append(b)
         train_confmap.append(cm)
         val_box.append(vb)
@@ -678,7 +680,8 @@ def train_test_diff(data_path, label_path, test_data_path, test_label_path, *,
             print("Accuracy on data set %d: %.2f of " % (i, res), L[j])
 
 def train_only(data_path, label_path, *,
-    base_output_path="models",
+    test_start=800, 
+	base_output_path="models",
     run_name=None,
     data_name=None,
     net_name="leap_cnn",
@@ -797,7 +800,7 @@ def train_only(data_path, label_path, *,
     test_idx = list()
     for i in range(len(data_path)):
         b, cm, vb, vcm, tb, tcm, tid, vid, teid \
-            = train_val_test_split(box[i], confmap[i], train_size=train_size, val_size=val_size, test_size=2500)
+            = train_val_test_split(box[i], confmap[i], train_size=train_size, val_size=val_size, test_size=2500, test_start=test_start)
         train_box.append(b)
         train_confmap.append(cm)
         val_box.append(vb)
@@ -1140,6 +1143,7 @@ if __name__ == "__main__":
     parser.add_argument("--test_idx", type=str, default=None, help="Test idx for test only")
     parser.add_argument("--model_path", type=str, default=None, help="Trained model path")
     parser.add_argument("--epoch", type=int, default=20, help="Training epochs")
+	parser.add_argument("--test_start", type=int, default=800, help="Test start")
     args = parser.parse_args()
 
     train_path = [args.train_video_path]
@@ -1164,14 +1168,14 @@ if __name__ == "__main__":
 
     # train and test on the same video
     if args.mode == "same":
-        train_test_same(train_path, label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path)
+        train_test_same(train_path, label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path, test_start=test_start)
     elif args.mode == "diff":
         # train and test on different videos        
-        train_test_diff(train_path, label_path, test_path, test_label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path)
+        train_test_diff(train_path, label_path, test_path, test_label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path, test_start=test_start)
     elif args.mode == "train":
-        train_only(train_path, label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path)
+        train_only(train_path, label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path, test_start=test_start)
     elif args.mode == "test":
-        test(test_path, test_label_path, args.model_path, args.test_idx, batch_size=args.batch, base_output_path=args.base_output_path)
+        test(test_path, test_label_path, args.model_path, args.test_idx, batch_size=args.batch, base_output_path=args.base_output_path, test_start=test_start)
     else:
         print("--mode should be in [same, diff, test]")
 
