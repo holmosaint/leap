@@ -64,7 +64,7 @@ def train_val_test_split(X, Y, train_size=0.5, val_size=0.15, test_start=800, te
         test_size = len(X) - train_size
 
     test_start = test_start
-    print("Test start: ", test_start)=
+    print("Test start: ", test_start)
     # test_start = np.random.randint(0, len(X) - test_size - 1)
     test_idx = np.arange(test_start, test_start + test_size)
 
@@ -147,7 +147,7 @@ def create_model(net_name, img_size, output_channels, **kwargs):
     return compile_model(img_size, output_channels, **kwargs)
 
 def train_test_same(data_path, label_path, *,
-	test_start=800, 
+    test_start=800, 
     base_output_path="models",
     run_name=None,
     data_name=None,
@@ -409,7 +409,7 @@ def train_test_same(data_path, label_path, *,
             print("Accuracy on data set %d: %.2f of " % (i, res), L[j])
 
 def train_test_diff(data_path, label_path, test_data_path, test_label_path, *,
-	test_start=800, 
+    test_start=800, 
     base_output_path="models",
     run_name=None,
     data_name=None,
@@ -681,7 +681,7 @@ def train_test_diff(data_path, label_path, test_data_path, test_label_path, *,
 
 def train_only(data_path, label_path, *,
     test_start=800, 
-	base_output_path="models",
+    base_output_path="models",
     run_name=None,
     data_name=None,
     net_name="leap_cnn",
@@ -980,8 +980,9 @@ def test(data_path, label_path, model_path, test_idx, *,
         mat_contends = sio.loadmat(test_idx)
         test_idx = mat_contends["test_idx"]
     elif test_idx is None:
-        ts = np.random.randint(0, 2500)
-        test_idx = np.arange(ts, ts + 2500)
+        """ts = np.random.randint(0, 2500)
+        test_idx = np.arange(ts, ts + 2500)"""
+        test_idx = np.arange(0, 5000)
     
     print(type(test_idx))
     print(test_idx.shape)
@@ -1168,14 +1169,14 @@ if __name__ == "__main__":
 
     # train and test on the same video
     if args.mode == "same":
-        train_test_same(train_path, label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path, test_start=test_start)
+        train_test_same(train_path, label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path, test_start=args.test_start)
     elif args.mode == "diff":
         # train and test on different videos        
-        train_test_diff(train_path, label_path, test_path, test_label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path, test_start=test_start)
+        train_test_diff(train_path, label_path, test_path, test_label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path, test_start=args.test_start)
     elif args.mode == "train":
-        train_only(train_path, label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path, test_start=test_start)
+        train_only(train_path, label_path, batch_size=args.batch, epochs=args.epoch, train_size=args.train_size, base_output_path=args.base_output_path, test_start=args.test_start)
     elif args.mode == "test":
-        test(test_path, test_label_path, args.model_path, args.test_idx, batch_size=args.batch, base_output_path=args.base_output_path, test_start=test_start)
+        test(test_path, test_label_path, args.model_path, args.test_idx, batch_size=args.batch, base_output_path=args.base_output_path)
     else:
         print("--mode should be in [same, diff, test]")
 
